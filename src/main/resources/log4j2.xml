@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--status 指定 Log4j2自身的日志级别, 通常OFF不记录-->
+<configuration status="OFF">
+
+
+    <Properties>
+        <!-- 可以指定磁盘或者项目路径, 从而将日志信息打印至相应位置-->
+        <Property name="dir">C:\Users\12859\Desktop\logs\Logfile.log</Property>
+        <Property name="srcDir">src/logs/appLog.log</Property>
+        <Property name="targetDir">target/logs/appLog.log</Property>
+        <Property name="baseDir">target/rolling_logs</Property>
+    </Properties>
+
+    <!--    Appenders 用于配置输出源-->
+    <Appenders>
+        <!-- Console, 即将控制台作为输出目的地-->
+        <Console name="Console1" target="SYSTEM_OUT">
+            <!-- PatternLayout用来格式化日志 -->
+            <PatternLayout pattern="%d{yyyy/MM/dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+        <!--        SYSTEM_ERR表示在控制台的错误信息中打印-->
+        <Console name="Console2" target="SYSTEM_ERR">
+            <!-- PatternLayout用来格式化日志 -->
+            <PatternLayout pattern="%d{yyyy/MM/dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+        <!-- File, 即将文件作为输出目的地, 日志一般为.log文件(也可以是其他,如html, txt)-->
+        <File name="FileAppender1" fileName="${dir}">
+            <!-- 格式化日志 -->
+            <PatternLayout>
+                <pattern>%d{yyyy/MM/dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</pattern>
+            </PatternLayout>
+        </File>
+        <!--        RollingFile用于配置滚动文件的输出目的地, 可以实现日志文件的滚动备份-->
+        <!--        fileName 指定最新的日志的文件的存储位置, 即appLog.log始终存放当前最新的日志-->
+        <!--            filePattern 指定备份的日志文件的位置及名称格式-->
+        <!--        $${date:yyyy-MM} 每月自动生成一个文件夹, 存放备份的日志(以压缩包形式存储,节省空间) -->
+        <!--            文件夹里的日志按%d{MM-dd-yyyy}-%i格式命名  %d为日期  %i为序号-->
+        <RollingFile name="RollingFileAppender1"
+                     fileName="${baseDir}/appLog.log"
+                     filePattern="${baseDir}/$${date:yyyy-MM}/%d{MM-dd-yyyy-HH-mm-ss}-%i.log.gz">
+            <PatternLayout>
+                <!-- 格式化日志 -->
+                <Pattern>%d{yyyy/MM/dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Pattern>
+            </PatternLayout>
+
+
+<!--            默认对同名的日志文件进行编号(默认到7, 超出则替换原文件),这里可以更改编号最大值-->
+            <DefaultRolloverStrategy max="10">
+                <!-- 设置备份文件的删除策略, 同时满足-->
+                <Delete basePath="${baseDir}" maxDepth="2">
+                    <IfFileName glob="*/*.log.gz" />
+                    <!-- 备份文件最新修改时间距此超过15s -->
+                    <IfLastModified age="15s" />
+                </Delete>
+            </DefaultRolloverStrategy>
+
+            <!-- 指定日志的备份策略, 即达到任一条件就对日志进行备份 -->
+            <Policies>
+                <!-- 每隔一定的时间间隔就进行备份,
+                interval的单位与日志文件的命名格式(即filePattern)
+                (${baseDir}/$${date:yyyy-MM}/%d{MM-dd-yyyy-HH-mm-ss}-%i.log.gz)的最小时间单位(ss)有关,
+                此表示每隔10s备份一次 -->
+                <TimeBasedTriggeringPolicy interval="10"
+                                           modulate="true"/>
+                <!-- 日志文件达到size, 就进行备份 -->
+                <SizeBasedTriggeringPolicy size="20MB"/>
+
+                <!-- 也可以利用Cron表示式(类似于Linux中的Crontab)设置定时任务进行备份 -->
+                <CronTriggeringPolicy  schedule="0/10 * * * * ?"/>
+            </Policies>
+        </RollingFile>
+    </Appenders>
+
+    <!-- Loggers用于配置所有的日志记录器, 包括级别及输出位置-->
+    <Loggers>
+        <!-- 如果Logger没有设置级别和输出目的地, 则默认继承Root配置 -->
+        <!-- 如果Logger没有设置级别和输出目的地, 且没有配置Root, 则默认在控制台打印, Error级别信息-->
+        <Root level="DEBUG">
+            <AppenderRef ref="Console1"/>
+        </Root>
+        <!-- 设置为DEBUG级别 -->
+        <Logger name="com.shy.main.Test1" level="DEBUG" additivity="false">
+            <!-- 为Logger指定响应的输出源, 可以配置多个, 如分别在控制台和文件中打印日志 -->
+            <AppenderRef ref="Console1"/>
+        </Logger>
+        <!-- 默认每一个Logger会在自己和Root的输出目的地各打印一次, additivity="false"则只在自己的输出目的地打印日志 -->
+        <Logger name="com.shy.main.Test2" level="info" additivity="false">
+            <AppenderRef ref="Console2"/>
+        </Logger>
+
+        <Logger name="com.shy.dao.StudentDao" additivity="false">
+            <!-- StudentDao相关的日志打印到文件 -->
+            <AppenderRef ref="FileAppender1"/>
+        </Logger>
+
+        <Logger name="com.shy.service.CourseService" level="trace" additivity="false">
+            <AppenderRef ref="RollingFileAppender1"/>
+        </Logger>
+    </Loggers>
+</configuration>
